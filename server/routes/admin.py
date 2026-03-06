@@ -2,11 +2,13 @@ from datetime import datetime
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 import bcrypt
 from server.database.connection import get_db
-from server.models import User, ApiKey, Role
-from server.utils.helpers import generate_token, sha256_of_token
+from sqlalchemy import func
+from server.models import User, ApiKey, Role, DataType, Station, File
+from server.utils.helpers import generate_token, sha256_of_token, slugify, human_readable_size
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="server/templates")
@@ -146,3 +148,107 @@ async def delete_api_key(key_id: int, request: Request, db: Session = Depends(ge
     db.commit()
     request.session["flash"] = {"type": "success", "message": f"Key '{name}' deleted"}
     return RedirectResponse(url="/admin/api-keys", status_code=302)
+
+
+# ── Data Types ─────────────────────────────────────────────────────────────────
+
+@router.get("/data-types", response_class=HTMLResponse)
+async def data_types_page(request: Request, db: Session = Depends(get_db)):
+    data_types = db.query(DataType).order_by(DataType.id).all()
+    file_stats = {
+        code: {"count": count, "size": size or 0}
+        for code, count, size in db.query(
+            File.type_code,
+            func.count(File.id),
+            func.sum(File.file_size),
+        ).group_by(File.type_code).all()
+    }
+    flash = request.session.pop("flash", None)
+    return templates.TemplateResponse("data_types.html", {
+        "request": request,
+        "user": request.session.get("user"),
+        "data_types": data_types,
+        "file_stats": file_stats,
+        "human_readable_size": human_readable_size,
+        "flash": flash,
+    })
+
+
+@router.post("/data-types")
+async def create_data_type(
+    request: Request,
+    name: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    code = slugify(name)
+    existing = db.query(DataType).filter(DataType.code == code).first()
+    if existing:
+        request.session["flash"] = {"type": "error", "message": f"Data type '{name}' already exists (code: {code})"}
+        return RedirectResponse(url="/admin/data-types", status_code=302)
+    db.add(DataType(name=name, code=code))
+    db.commit()
+    request.session["flash"] = {"type": "success", "message": f"Data type '{name}' created"}
+    return RedirectResponse(url="/admin/data-types", status_code=302)
+
+
+@router.post("/data-types/{dt_id}/delete")
+async def delete_data_type(dt_id: int, request: Request, db: Session = Depends(get_db)):
+    dt = db.query(DataType).filter(DataType.id == dt_id).first()
+    if not dt:
+        raise HTTPException(status_code=404, detail="Data type not found")
+    name = dt.name
+    try:
+        db.delete(dt)
+        db.commit()
+        request.session["flash"] = {"type": "success", "message": f"Data type '{name}' deleted"}
+    except IntegrityError:
+        db.rollback()
+        request.session["flash"] = {"type": "error", "message": f"Cannot delete '{name}': files are associated with it"}
+    return RedirectResponse(url="/admin/data-types", status_code=302)
+
+
+# ── Stations ───────────────────────────────────────────────────────────────────
+
+@router.get("/stations", response_class=HTMLResponse)
+async def stations_page(request: Request, db: Session = Depends(get_db)):
+    stations = db.query(Station).order_by(Station.id).all()
+    flash = request.session.pop("flash", None)
+    return templates.TemplateResponse("stations.html", {
+        "request": request,
+        "user": request.session.get("user"),
+        "stations": stations,
+        "flash": flash,
+    })
+
+
+@router.post("/stations")
+async def create_station(
+    request: Request,
+    name: str = Form(...),
+    code: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    existing = db.query(Station).filter(Station.code == code).first()
+    if existing:
+        request.session["flash"] = {"type": "error", "message": f"Station code '{code}' already exists"}
+        return RedirectResponse(url="/admin/stations", status_code=302)
+    db.add(Station(name=name, code=code))
+    db.commit()
+    request.session["flash"] = {"type": "success", "message": f"Station '{name}' created"}
+    return RedirectResponse(url="/admin/stations", status_code=302)
+
+
+@router.post("/stations/{station_id}/delete")
+async def delete_station(station_id: int, request: Request, db: Session = Depends(get_db)):
+    station = db.query(Station).filter(Station.id == station_id).first()
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+    name = station.name
+    try:
+        db.delete(station)
+        db.commit()
+        request.session["flash"] = {"type": "success", "message": f"Station '{name}' deleted"}
+    except IntegrityError:
+        db.rollback()
+        request.session["flash"] = {"type": "error", "message": f"Cannot delete '{name}': files are associated with it"}
+    return RedirectResponse(url="/admin/stations", status_code=302)

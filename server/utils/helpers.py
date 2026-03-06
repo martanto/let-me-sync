@@ -1,7 +1,12 @@
 import csv
 import hashlib
+import re
 import secrets
 from pathlib import Path
+
+
+def slugify(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
 
 
 def sha256_of_token(token: str) -> str:

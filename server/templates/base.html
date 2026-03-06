@@ -26,6 +26,8 @@
       {% endif %}
       {% if user and 'admin' in user.roles %}
       <a href="/admin/users" class="{% block nav_users %}{% endblock %}">Users</a>
+      <a href="/admin/data-types" class="{% block nav_data_types %}{% endblock %}">Data Types</a>
+      <a href="/admin/stations" class="{% block nav_stations %}{% endblock %}">Stations</a>
       {% endif %}
     </nav>
     {% if user %}

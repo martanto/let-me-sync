@@ -10,9 +10,37 @@ from starlette.middleware.sessions import SessionMiddleware
 from server.cli.seed import _seed_roles, seed
 from server.config import SECRET_KEY, DEBUG, APP_ENV, DATA_ROOT
 from server.database.connection import SessionLocal, check_db_connection
-from server.models import Role, User
+from server.models import Role, User, DataType, Station
 from server.middleware import AuthMiddleware
 from server.routes import auth, files, sync, admin
+
+
+CANONICAL_DATA_TYPES = [
+    ("Seismic", "seismic"),
+    ("Deformation", "deformation"),
+    ("Multigas", "multigas"),
+    ("Visual", "visual"),
+    ("Weather", "weather"),
+    ("Paper", "paper"),
+]
+
+CANONICAL_STATIONS = [
+    ("Station 1", "sta1"),
+    ("Station 2", "sta2"),
+    ("Station 3", "sta3"),
+    ("Station 4", "sta4"),
+    ("Station 5", "sta5"),
+]
+
+
+def _seed_reference_data(db) -> None:
+    for name, code in CANONICAL_DATA_TYPES:
+        if not db.query(DataType).filter(DataType.code == code).first():
+            db.add(DataType(name=name, code=code))
+    for name, code in CANONICAL_STATIONS:
+        if not db.query(Station).filter(Station.code == code).first():
+            db.add(Station(name=name, code=code))
+    db.commit()
 
 
 def prompt_create_admin(db):
@@ -45,6 +73,7 @@ async def lifespan(app: FastAPI):
 
     db = SessionLocal()
     try:
+        _seed_reference_data(db)
         if DEBUG and APP_ENV != "production":
             seed(db)
         else:
