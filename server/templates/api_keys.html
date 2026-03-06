@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}API Keys — Let Me Sync{% endblock %}
+{% block nav_keys %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>API Keys</h1>
+  <p>Manage bearer tokens for sync clients.</p>
+</div>
+
+{% if new_key %}
+<div class="flash info" style="flex-direction:column;align-items:flex-start;gap:.5rem;">
+  <div style="display:flex;align-items:center;gap:.5rem;">
+    <i data-lucide="key" style="width:16px;height:16px;"></i>
+    <strong>New key created — copy this token now. It will not be shown again.</strong>
+  </div>
+  <div style="width:100%;">
+    <div class="token-box" id="tokenValue">{{ new_key.token }}</div>
+    <button class="btn btn-secondary btn-sm" onclick="copyToken()">
+      <i data-lucide="copy" style="width:13px;height:13px;"></i>
+      Copy
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<div class="table-card">
+  <div class="table-toolbar">
+    <h2>API Keys</h2>
+    <button class="btn btn-primary btn-sm" onclick="openModal('createModal')">
+      <i data-lucide="plus" style="width:14px;height:14px;"></i>
+      New Key
+    </button>
+  </div>
+  {% if keys %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Created by</th>
+        <th>Created at</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for k in keys %}
+      <tr>
+        <td>{{ k.name }}</td>
+        <td>{{ k.created_by }}</td>
+        <td><span style="color:var(--text-muted);font-size:.8rem;">{{ k.created_at.strftime('%Y-%m-%d %H:%M') }}</span></td>
+        <td>
+          {% if k.revoked %}
+          <span class="badge badge-revoked">Revoked</span>
+          {% else %}
+          <span class="badge badge-active">Active</span>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap;">
+          <form method="post" action="/admin/api-keys/{{ k.id }}/revoke" style="display:inline;">
+            <button type="submit" class="btn btn-ghost btn-sm" title="{{ 'Activate' if k.revoked else 'Revoke' }}">
+              <i data-lucide="{{ 'play' if k.revoked else 'ban' }}" style="width:14px;height:14px;"></i>
+            </button>
+          </form>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red);"
+            onclick="openDeleteModal({{ k.id }}, '{{ k.name }}')">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:2.5rem;text-align:center;color:var(--text-muted);">
+    <i data-lucide="key" style="width:32px;height:32px;margin:0 auto .75rem;display:block;"></i>
+    No API keys yet. Create one to allow field clients to sync.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Create key modal -->
+<div class="modal-backdrop" id="createModal">
+  <div class="modal">
+    <h3>Create API key</h3>
+    <form method="post" action="/admin/api-keys" style="display:flex;flex-direction:column;gap:.875rem;">
+      <div class="form-group">
+        <label>Key name</label>
+        <input type="text" name="name" placeholder="e.g. field-station-1" required autofocus>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('createModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Generate</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete key modal -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal">
+    <h3>Delete API key</h3>
+    <p>Delete key <strong id="deleteKeyName"></strong>? This cannot be undone.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+      <form id="deleteForm" method="post">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+});
+function openDeleteModal(id, name) {
+  document.getElementById('deleteKeyName').textContent = name;
+  document.getElementById('deleteForm').action = '/admin/api-keys/' + id + '/delete';
+  openModal('deleteModal');
+}
+function copyToken() {
+  const text = document.getElementById('tokenValue').textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target.closest('button');
+    btn.innerHTML = '<i data-lucide="check" style="width:13px;height:13px;"></i> Copied';
+    lucide.createIcons();
+    setTimeout(() => {
+      btn.innerHTML = '<i data-lucide="copy" style="width:13px;height:13px;"></i> Copy';
+      lucide.createIcons();
+    }, 2000);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Let Me Sync{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Volcano Monitoring Files</h1>
+  <p>Select a data group to browse and manage files.</p>
+</div>
+
+<div class="cards-grid">
+  {% for card in cards %}
+  <a href="/files/{{ card.data_type }}" class="data-card">
+    <div class="card-icon">
+      <i data-lucide="{{ card.icon }}" style="width:20px;height:20px;"></i>
+    </div>
+    <div>
+      <div class="card-title">{{ card.label }}</div>
+      <div class="card-count">{{ card.count }} file{{ 's' if card.count != 1 else '' }}</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

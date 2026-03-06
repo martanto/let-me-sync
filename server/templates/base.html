@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Let Me Sync{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <i data-lucide="mountain" style="width:20px;height:20px;"></i>
+      Let Me Sync
+    </a>
+    <nav>
+      <a href="/" class="{% block nav_home %}{% endblock %}">Dashboard</a>
+      {% if user and user.role in ('admin', 'uploader') %}
+      <a href="/admin/api-keys" class="{% block nav_keys %}{% endblock %}">API Keys</a>
+      {% endif %}
+      {% if user and user.role == 'admin' %}
+      <a href="/admin/users" class="{% block nav_users %}{% endblock %}">Users</a>
+      {% endif %}
+    </nav>
+    {% if user %}
+    <div class="header-right">
+      <button class="avatar-btn" id="avatarBtn" onclick="toggleDropdown()">
+        <i data-lucide="user" style="width:15px;height:15px;"></i>
+        {{ user.username }}
+        <span class="badge badge-{{ user.role }}" style="margin-left:.25rem;">{{ user.role }}</span>
+        <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+      </button>
+      <div class="dropdown" id="dropdown">
+        <form action="/logout" method="post">
+          <button class="dropdown-item" type="submit">
+            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+            Sign out
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    {% if flash %}
+    <div class="flash {{ flash.type }}" style="margin-top:1rem;">
+      {% if flash.type == 'success' %}<i data-lucide="check-circle" style="width:16px;height:16px;"></i>
+      {% elif flash.type == 'error' %}<i data-lucide="alert-circle" style="width:16px;height:16px;"></i>
+      {% else %}<i data-lucide="info" style="width:16px;height:16px;"></i>{% endif %}
+      {{ flash.message }}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<script>
+  lucide.createIcons();
+  function toggleDropdown() {
+    document.getElementById('dropdown').classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#avatarBtn') && !e.target.closest('#dropdown')) {
+      document.getElementById('dropdown')?.classList.remove('open');
+    }
+  });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
