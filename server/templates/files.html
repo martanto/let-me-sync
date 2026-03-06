@@ -31,12 +31,18 @@
       <a href="/files/{{ data_type }}" class="btn btn-ghost btn-sm">Clear</a>
       {% endif %}
     </form>
+    <div style="margin-left:auto;">
+      <button id="download-zip-btn" class="btn btn-primary btn-sm" disabled onclick="downloadSelected()">
+        <i data-lucide="archive" style="width:14px;height:14px;"></i> Download Selected
+      </button>
+    </div>
   </div>
 
   {% if files %}
   <table>
     <thead>
       <tr>
+        <th class="col-check"><input type="checkbox" id="select-all" title="Select all" onchange="toggleAll(this)"/></th>
         <th>Station</th>
         <th>Filename</th>
         <th>Size</th>
@@ -48,6 +54,7 @@
     <tbody>
       {% for f in files %}
       <tr>
+        <td class="col-check"><input type="checkbox" class="file-check" value="{{ f.id }}" onchange="updateDownloadBtn()"/></td>
         <td>{{ f.station }}</td>
         <td>{{ f.filename }}</td>
         <td>{{ human_readable_size(f.file_size) }}</td>
@@ -104,5 +111,24 @@ function closeModal() {
 document.getElementById('deleteModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+
+function updateDownloadBtn() {
+  const checked = document.querySelectorAll('.file-check:checked');
+  document.getElementById('download-zip-btn').disabled = checked.length === 0;
+  const all = document.querySelectorAll('.file-check');
+  document.getElementById('select-all').checked = all.length > 0 && checked.length === all.length;
+}
+
+function toggleAll(cb) {
+  document.querySelectorAll('.file-check').forEach(c => c.checked = cb.checked);
+  updateDownloadBtn();
+}
+
+function downloadSelected() {
+  const ids = [...document.querySelectorAll('.file-check:checked')].map(c => c.value);
+  if (ids.length === 0) return;
+  const params = ids.map(id => `ids=${encodeURIComponent(id)}`).join('&');
+  window.location.href = `/download-zip?${params}`;
+}
 </script>
 {% endblock %}

@@ -1,8 +1,10 @@
+import io
 import os
+import zipfile
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, Request, UploadFile, File, Form, Depends, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi import APIRouter, Request, UploadFile, File, Form, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from server.database.connection import get_db
@@ -98,6 +100,27 @@ async def download_file(file_id: int, request: Request, db: Session = Depends(ge
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="File missing on disk")
     return FileResponse(path=str(full_path), filename=record.filename)
+
+
+@router.get("/download-zip")
+async def download_zip(ids: list[int] = Query(...), db: Session = Depends(get_db)):
+    records = db.query(DataFile).filter(DataFile.id.in_(ids)).all()
+    if not records:
+        raise HTTPException(status_code=404, detail="No files found")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for record in records:
+            full_path = DATA_ROOT / record.file_path
+            if full_path.exists():
+                zf.write(full_path, arcname=record.file_path)
+    buf.seek(0)
+
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=files.zip"},
+    )
 
 
 @router.post("/files/{file_id}/delete")
