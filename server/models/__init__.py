@@ -33,4 +33,5 @@ class DataFile(Base):
     file_path = Column(String, nullable=False, unique=True)
     file_sha256 = Column(String, nullable=False)
     file_size = Column(BigInteger, default=0)
+    total_rows = Column(Integer, nullable=True)
     uploaded_at = Column(DateTime, default=datetime.utcnow)

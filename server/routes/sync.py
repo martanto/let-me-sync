@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from fastapi import APIRouter, Request, UploadFile, File, Form, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -6,7 +7,7 @@ from server.database.connection import get_db
 from server.models import DataFile
 from server.config import DATA_ROOT, DATA_TYPES
 from server.schemas import SyncCheckItem
-from server.utils.helpers import sha256_of_file, get_upload_path, get_sds_path
+from server.utils.helpers import sha256_of_file, get_upload_path, get_sds_path, validate_and_count_csv, CSV_DATA_TYPES
 
 router = APIRouter(prefix="/sync")
 
@@ -54,6 +55,10 @@ async def sync_upload(
     if data_type not in DATA_TYPES:
         raise HTTPException(status_code=400, detail="Invalid data_type")
 
+    if data_type in CSV_DATA_TYPES:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}\.csv", file.filename):
+            raise HTTPException(status_code=400, detail="Filename must match YYYY-MM-DD.csv")
+
     if data_type == "seismic":
         if not all(x is not None for x in [net, chan, sds_type, day]):
             raise HTTPException(
@@ -74,6 +79,14 @@ async def sync_upload(
     file_size = dest.stat().st_size
     rel_path = str(dest.relative_to(DATA_ROOT)).replace("\\", "/")
 
+    total_rows = None
+    if data_type in CSV_DATA_TYPES:
+        try:
+            total_rows = validate_and_count_csv(str(dest))
+        except Exception as e:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail=f"Invalid CSV: {e}")
+
     existing = (
         db.query(DataFile)
         .filter(
@@ -88,6 +101,7 @@ async def sync_upload(
         existing.file_sha256 = file_hash
         existing.file_size = file_size
         existing.file_path = rel_path
+        existing.total_rows = total_rows
         existing.uploaded_at = datetime.utcnow()
         db.commit()
         return {"status": "updated", "id": existing.id, "sha256": file_hash}
@@ -99,6 +113,7 @@ async def sync_upload(
             file_path=rel_path,
             file_sha256=file_hash,
             file_size=file_size,
+            total_rows=total_rows,
         )
         db.add(record)
         db.commit()

@@ -1,3 +1,4 @@
+import csv
 import hashlib
 import secrets
 from pathlib import Path
@@ -38,6 +39,19 @@ def get_sds_path(
     """
     filename = f"{net}.{sta}.{loc}.{chan}.{sds_type}.{year}.{day}"
     return data_root / "seismic" / year / net / sta / f"{chan}.{sds_type}" / filename
+
+
+CSV_DATA_TYPES = {"weather", "deformation"}
+
+
+def validate_and_count_csv(file_path: str) -> int:
+    count = 0
+    with open(file_path, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        next(reader, None)  # skip header
+        for _ in reader:
+            count += 1
+    return count
 
 
 def human_readable_size(size_bytes: int) -> str:

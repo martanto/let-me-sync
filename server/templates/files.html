@@ -46,7 +46,7 @@
         <th>Station</th>
         <th>Filename</th>
         <th>Size</th>
-        <th>SHA-256</th>
+        {% if data_type in ['weather', 'deformation'] %}<th>Rows</th>{% endif %}
         <th>Uploaded</th>
         <th></th>
       </tr>
@@ -58,7 +58,7 @@
         <td>{{ f.station }}</td>
         <td>{{ f.filename }}</td>
         <td>{{ human_readable_size(f.file_size) }}</td>
-        <td><span class="mono">{{ f.file_sha256[:16] }}…</span></td>
+        {% if data_type in ['weather', 'deformation'] %}<td>{{ f.total_rows if f.total_rows is not none else '—' }}</td>{% endif %}
         <td><span style="color:var(--text-muted);font-size:.8rem;">{{ f.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span></td>
         <td style="white-space:nowrap;">
           <a href="/download/{{ f.id }}" class="btn btn-ghost btn-sm" title="Download">
