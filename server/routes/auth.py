@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -8,6 +9,7 @@ from server.models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="server/templates")
+templates.env.globals["now"] = datetime.now
 
 
 @router.get("/login", response_class=HTMLResponse)

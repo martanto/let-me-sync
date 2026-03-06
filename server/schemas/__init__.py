@@ -50,6 +50,3 @@ class SyncCheckItem(BaseModel):
     sds_type: Optional[str] = None
     day: Optional[str] = None   # zero-padded day-of-year, e.g. "001"
 
-
-class SyncCheckResponse(BaseModel):
-    to_upload: list[SyncCheckItem]

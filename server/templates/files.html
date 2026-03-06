@@ -19,18 +19,6 @@
 <div class="table-card">
   <div class="table-toolbar">
     <h2>Files</h2>
-    <form class="filter-bar" method="get" action="/files/{{ data_type }}">
-      <label>Station:</label>
-      <select name="station" onchange="this.form.submit()">
-        <option value="">All stations</option>
-        {% for s in stations %}
-        <option value="{{ s }}" {% if selected_station == s %}selected{% endif %}>{{ s }}</option>
-        {% endfor %}
-      </select>
-      {% if selected_station %}
-      <a href="/files/{{ data_type }}" class="btn btn-ghost btn-sm">Clear</a>
-      {% endif %}
-    </form>
     <div style="margin-left:auto;">
       <button id="download-zip-btn" class="btn btn-primary btn-sm" disabled onclick="downloadSelected()">
         <i data-lucide="archive" style="width:14px;height:14px;"></i> Download Selected
@@ -38,7 +26,49 @@
     </div>
   </div>
 
+  <div class="table-filters">
+    <form class="filter-bar" method="get" action="/files/{{ data_type }}" id="filter-form">
+      <label>Station:</label>
+      <select name="station" onchange="this.form.submit()">
+        <option value="">All stations</option>
+        {% for s in stations %}
+        <option value="{{ s }}" {% if selected_station == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <label style="margin-left:.75rem;">Per page:</label>
+      <select name="limit" onchange="this.form.submit()">
+        {% for val, lbl in [(10,'10'),(25,'25'),(50,'50'),(0,'All')] %}
+        <option value="{{ val }}" {% if limit == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="page" value="1">
+    </form>
+    <span class="files-count">{{ total }} file(s){% if limit > 0 and total_pages > 1 %} — showing {{ files|length }}{% endif %}</span>
+  </div>
+
+  {% set show_pagination = total_pages > 1 %}
+  {% set base_qs = "station=" ~ (selected_station or "") ~ "&limit=" ~ limit %}
+
+  {% macro pagination(pos) %}
+  {% if show_pagination %}
+  <nav class="pagination pagination-{{ pos }}">
+    {% if page > 1 %}
+    <a href="/files/{{ data_type }}?{{ base_qs }}&page={{ page - 1 }}" class="btn btn-ghost btn-sm"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i> Prev</a>
+    {% else %}
+    <span class="btn btn-ghost btn-sm pagination-disabled"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i> Prev</span>
+    {% endif %}
+    <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="/files/{{ data_type }}?{{ base_qs }}&page={{ page + 1 }}" class="btn btn-ghost btn-sm">Next <i data-lucide="chevron-right" style="width:14px;height:14px;"></i></a>
+    {% else %}
+    <span class="btn btn-ghost btn-sm pagination-disabled">Next <i data-lucide="chevron-right" style="width:14px;height:14px;"></i></span>
+    {% endif %}
+  </nav>
+  {% endif %}
+  {% endmacro %}
+
   {% if files %}
+  {{ pagination('top') }}
   <table>
     <thead>
       <tr>
@@ -75,6 +105,7 @@
       {% endfor %}
     </tbody>
   </table>
+  {{ pagination('bottom') }}
   {% else %}
   <div style="padding:2.5rem;text-align:center;color:var(--text-muted);">
     <i data-lucide="inbox" style="width:32px;height:32px;margin-bottom:.5rem;display:block;margin:0 auto .75rem;"></i>

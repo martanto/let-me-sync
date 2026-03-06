@@ -4,7 +4,7 @@ A FastAPI server for syncing and managing volcano monitoring files. Field client
 
 ## Features
 
-- **Five data groups** — Seismic, Deformation, Multigas, Visual, Weather
+- **Six data groups** — Seismic, Deformation, Multigas, Visual, Weather, Paper
 - **SDS layout for seismic files** — `seismic/YEAR/NET/STA/CHAN.TYPE/NET.STA.LOC.CHAN.TYPE.YEAR.DAY`
 - **SHA-256 sync** — clients send a manifest; the server returns only files that are missing or changed
 - **Three roles** — `admin`, `uploader`, `downloader`
@@ -39,7 +39,7 @@ cp .env.example .env
 ## Running
 
 ```bash
-uv run uvicorn server.main:app --reload
+uv run let-me-sync
 ```
 
 On the **first run** with no users in the database, the server will prompt you to create an admin account interactively.
@@ -64,6 +64,9 @@ server/
 ├── database/connection.py    # SQLAlchemy engine, SessionLocal
 ├── models/__init__.py        # User, ApiKey, DataFile
 ├── schemas/__init__.py       # Pydantic request/response models
+├── cli/
+│   ├── seed.py               # Dev seed: users, API key, dummy files
+│   └── refresh.py            # Drop + recreate DB and re-seed (dev only)
 ├── routes/
 │   ├── auth.py               # /login, /logout
 │   ├── files.py              # Dashboard, file listing, download, delete, upload
@@ -85,6 +88,7 @@ uploads/                      # Stored files (inside server/)
   multigas/STATION/YEAR/FILENAME
   visual/STATION/YEAR/FILENAME
   weather/STATION/YEAR/FILENAME
+  paper/STATION/YEAR/FILENAME
 ```
 
 ## File Storage
@@ -111,7 +115,10 @@ deformation/STA1/2024/gps_daily.csv
 multigas/STA3/2024/so2_flux.csv
 visual/STA1/2024/cam01_2024001.jpg
 weather/STA2/2024/met_2024001.csv
+paper/STA1/2024/research_2024.pdf
 ```
+
+Weather and deformation files must be named `YYYY-MM-DD.csv`.
 
 ## API Reference
 
@@ -166,7 +173,7 @@ Upload a single file. Use `multipart/form-data`.
 | Field      | Required          | Description                              |
 |------------|-------------------|------------------------------------------|
 | `file`     | always            | File content                             |
-| `data_type`| always            | `seismic` \| `deformation` \| `multigas` \| `visual` \| `weather` |
+| `data_type`| always            | `seismic` \| `deformation` \| `multigas` \| `visual` \| `weather` \| `paper` |
 | `station`  | always            | Station identifier (maps to STA in SDS)  |
 | `net`      | seismic only      | Network code                             |
 | `loc`      | seismic only      | Location code (may be empty)             |
@@ -174,30 +181,7 @@ Upload a single file. Use `multipart/form-data`.
 | `sds_type` | seismic only      | SDS record type, e.g. `D`               |
 | `day`      | seismic only      | Day of year, zero-padded, e.g. `001`    |
 
-**Seismic example:**
-
-```bash
-curl -X POST http://localhost:8000/sync/upload \
-  -H "Authorization: Bearer <token>" \
-  -F "file=@VG.STA1..EHZ.D.2024.001" \
-  -F "data_type=seismic" \
-  -F "station=STA1" \
-  -F "net=VG" \
-  -F "loc=" \
-  -F "chan=EHZ" \
-  -F "sds_type=D" \
-  -F "day=001"
-```
-
-**Non-seismic example:**
-
-```bash
-curl -X POST http://localhost:8000/sync/upload \
-  -H "Authorization: Bearer <token>" \
-  -F "file=@so2_flux.csv" \
-  -F "data_type=multigas" \
-  -F "station=STA3"
-```
+Weather and deformation filenames must match `YYYY-MM-DD.csv`.
 
 **Response:**
 
@@ -218,7 +202,11 @@ curl http://localhost:8000/files?data_type=seismic \
 
 ### `GET /download/{id}`
 
-Download a file by its database ID (session auth required).
+Download a file by its database ID (session or Bearer auth).
+
+### `GET /download-zip?ids=1&ids=2`
+
+Download multiple files as a ZIP archive (session or Bearer auth).
 
 ### `DELETE /files/{id}/delete`
 
@@ -226,12 +214,12 @@ Delete a file record and its data from disk. Admin only (POST form, session auth
 
 ## Web Dashboard
 
-| Route              | Access       | Description                        |
-|--------------------|--------------|------------------------------------|
-| `/`                | all roles    | Data group cards with file counts  |
-| `/files/{type}`    | all roles    | File listing with station filter   |
-| `/admin/users`     | admin        | Create, delete, change passwords   |
-| `/admin/api-keys`  | admin        | Generate, revoke, delete API keys  |
+| Route              | Access       | Description                              |
+|--------------------|--------------|------------------------------------------|
+| `/`                | all roles    | Data group cards with file counts        |
+| `/files/{type}`    | all roles    | File listing with station filter, pagination |
+| `/admin/users`     | admin        | Create, delete, change passwords         |
+| `/admin/api-keys`  | admin        | Generate, revoke, delete API keys        |
 
 ## Authentication
 
