@@ -41,11 +41,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Bearer-only API paths
         if path in BEARER_PATHS or (request.method == "POST" and path == "/upload"):
+            accepts_json = "application/json" in request.headers.get("accept", "")
             db = SessionLocal()
             try:
                 key = _get_bearer_key(request, db)
                 if key is None:
-                    return JSONResponse({"detail": "Invalid or missing API key"}, status_code=401)
+                    if accepts_json:
+                        return JSONResponse({"detail": "Invalid or missing API key"}, status_code=401)
+                    return RedirectResponse(url="/login", status_code=302)
                 request.state.api_key = key
             finally:
                 db.close()
@@ -67,13 +70,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         user = _get_session_user(request)
 
         if user is None:
-            if path.startswith("/api") or request.headers.get("accept", "").startswith("application/json"):
-                return JSONResponse({"detail": "Not authenticated"}, status_code=401)
             return RedirectResponse(url="/login", status_code=302)
 
         # Admin-only paths
         if path.startswith(ADMIN_PREFIX) and "admin" not in user.get("roles", []):
-            return JSONResponse({"detail": "Forbidden"}, status_code=403)
+            return RedirectResponse(url="/login", status_code=302)
 
         request.state.user = user
         return await call_next(request)
