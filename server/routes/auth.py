@@ -29,7 +29,11 @@ async def login(
 ):
     user = db.query(User).filter(User.username == username).first()
     if user and bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-        request.session["user"] = {"id": user.id, "username": user.username, "role": user.role}
+        request.session["user"] = {
+            "id": user.id,
+            "username": user.username,
+            "roles": [r.code for r in user.roles],
+        }
         return RedirectResponse(url="/", status_code=302)
     request.session["flash_error"] = "Invalid username or password"
     return RedirectResponse(url="/login", status_code=302)

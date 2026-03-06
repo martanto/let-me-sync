@@ -1,3 +1,4 @@
+import subprocess
 import sys
 from contextlib import asynccontextmanager
 
@@ -6,10 +7,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from server.cli.seed import seed
+from server.cli.seed import _seed_roles, seed
 from server.config import SECRET_KEY, DEBUG, APP_ENV, DATA_ROOT
-from server.database.connection import Base, engine, SessionLocal
-from server.models import User
+from server.database.connection import SessionLocal, check_db_connection
+from server.models import Role, User
 from server.middleware import AuthMiddleware
 from server.routes import auth, files, sync, admin
 
@@ -21,16 +22,23 @@ def prompt_create_admin(db):
     if not username or not password:
         print("Username and password cannot be empty. Exiting.")
         sys.exit(1)
+    _seed_roles(db)
+    role_obj = db.query(Role).filter(Role.code == "admin").first()
     pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    db.add(User(username=username, password_hash=pw_hash, role="admin"))
+    db.add(User(username=username, password_hash=pw_hash, roles=[role_obj]))
     db.commit()
     print(f"  Admin '{username}' created.\n")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables
-    Base.metadata.create_all(bind=engine)
+    try:
+        check_db_connection()
+    except RuntimeError as exc:
+        print(f"\n[ERROR] {exc}")
+        sys.exit(1)
+
+    subprocess.run(["uv", "run", "alembic", "upgrade", "head"], check=True)
 
     # Ensure uploads directory exists
     DATA_ROOT.mkdir(parents=True, exist_ok=True)

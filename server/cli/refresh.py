@@ -9,18 +9,21 @@ Usage:
 """
 
 import shutil
+import subprocess
 
 from server.config import APP_ENV, DATA_ROOT, DEBUG
-from server.database.connection import Base, SessionLocal, engine
+from server.database.connection import SessionLocal, check_db_connection
 
 from .seed import seed
 
 
 def refresh() -> None:
-    print("=== Refresh: dropping all tables ===")
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    print("Tables recreated.")
+    check_db_connection()
+
+    print("=== Refresh: dropping and recreating schema via Alembic ===")
+    subprocess.run(["uv", "run", "alembic", "downgrade", "base"], check=True)
+    subprocess.run(["uv", "run", "alembic", "upgrade", "head"], check=True)
+    print("Schema recreated.")
 
     if DATA_ROOT.exists():
         shutil.rmtree(DATA_ROOT)

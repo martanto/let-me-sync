@@ -1,6 +1,23 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, ForeignKey, Table
+from sqlalchemy.orm import relationship
 from server.database.connection import Base
+
+
+user_roles = Table(
+    "user_roles", Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("role_id", Integer, ForeignKey("roles.id"), primary_key=True),
+)
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)  # "Admin"
+    code = Column(String, unique=True, nullable=False)  # "admin"
+    users = relationship("User", secondary=user_roles, back_populates="roles")
 
 
 class User(Base):
@@ -9,7 +26,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="downloader")  # admin | uploader | downloader
+    roles = relationship("Role", secondary=user_roles, back_populates="users")
 
 
 class ApiKey(Base):

@@ -21,10 +21,10 @@
     </a>
     <nav>
       <a href="/" class="{% block nav_home %}{% endblock %}">Dashboard</a>
-      {% if user and user.role in ('admin', 'uploader') %}
+      {% if user and ('admin' in user.roles or 'uploader' in user.roles) %}
       <a href="/admin/api-keys" class="{% block nav_keys %}{% endblock %}">API Keys</a>
       {% endif %}
-      {% if user and user.role == 'admin' %}
+      {% if user and 'admin' in user.roles %}
       <a href="/admin/users" class="{% block nav_users %}{% endblock %}">Users</a>
       {% endif %}
     </nav>
@@ -33,7 +33,7 @@
       <button class="avatar-btn" id="avatarBtn" onclick="toggleDropdown()">
         <i data-lucide="user" style="width:15px;height:15px;"></i>
         {{ user.username }}
-        <span class="badge badge-{{ user.role }}" style="margin-left:.25rem;">{{ user.role }}</span>
+        {% for code in user.roles %}<span class="badge badge-{{ code }}" style="margin-left:.25rem;">{{ code }}</span>{% endfor %}
         <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
       </button>
       <div class="dropdown" id="dropdown">
