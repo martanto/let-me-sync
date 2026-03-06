@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import date as DateType, datetime
 from typing import Optional
 from pydantic import BaseModel
 
 
-class RoleOut(BaseModel):
+class RoleResponse(BaseModel):
     id: int
     name: str
     code: str
@@ -12,16 +12,16 @@ class RoleOut(BaseModel):
         from_attributes = True
 
 
-class UserOut(BaseModel):
+class UserResponse(BaseModel):
     id: int
     username: str
-    roles: list[RoleOut]
+    roles: list[RoleResponse]
 
     class Config:
         from_attributes = True
 
 
-class ApiKeyOut(BaseModel):
+class ApiKeyResponse(BaseModel):
     id: int
     name: str
     created_at: datetime
@@ -32,15 +32,34 @@ class ApiKeyOut(BaseModel):
         from_attributes = True
 
 
-class DataFileOut(BaseModel):
+class DataTypeResponse(BaseModel):
     id: int
-    data_type: str
-    station: str
+    name: str
+    code: str
+
+    class Config:
+        from_attributes = True
+
+
+class StationResponse(BaseModel):
+    id: int
+    name: str
+    code: str
+
+    class Config:
+        from_attributes = True
+
+
+class FileResponse(BaseModel):
+    id: int
+    type_code: str
+    station_code: str
     filename: str
     file_path: str
     file_sha256: str
     file_size: int
     total_rows: int | None = None
+    date: DateType | None = None
     uploaded_at: datetime
 
     class Config:
@@ -58,3 +77,7 @@ class SyncCheckItem(BaseModel):
     chan: Optional[str] = None
     sds_type: Optional[str] = None
     day: Optional[str] = None   # zero-padded day-of-year, e.g. "001"
+
+
+class SyncCheckResponse(BaseModel):
+    to_upload: list[SyncCheckItem]

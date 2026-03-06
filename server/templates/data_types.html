@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Data Types — Let Me Sync{% endblock %}
+{% block nav_data_types %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Data Types</h1>
+  <p>Manage monitoring data type definitions.</p>
+</div>
+
+<div class="table-card">
+  <div class="table-toolbar">
+    <h2>All Data Types</h2>
+    <button class="btn btn-primary btn-sm" onclick="openModal('createModal')">
+      <i data-lucide="plus" style="width:14px;height:14px;"></i>
+      New Data Type
+    </button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Code</th>
+        <th>Total Files</th>
+        <th>Total Size</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dt in data_types %}
+      <tr>
+        <td style="color:var(--text-muted);font-size:.8rem;">{{ dt.id }}</td>
+        <td>{{ dt.name }}</td>
+        <td><span class="badge badge-active">{{ dt.code }}</span></td>
+        <td>{{ file_stats.get(dt.code, {}).get('count', 0) }}</td>
+        <td>{{ human_readable_size(file_stats.get(dt.code, {}).get('size', 0)) }}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-sm" style="color:var(--red);"
+            onclick="openDeleteModal({{ dt.id }}, '{{ dt.name }}')">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Create modal -->
+<div class="modal-backdrop" id="createModal">
+  <div class="modal">
+    <h3>Create data type</h3>
+    <form method="post" action="/admin/data-types" style="display:flex;flex-direction:column;gap:.875rem;">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" placeholder="e.g. Seismic" required autofocus>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('createModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal">
+    <h3>Delete data type</h3>
+    <p>Delete <strong id="deleteName"></strong>? This cannot be undone and will fail if files are associated with it.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+      <form id="deleteForm" method="post">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+});
+function openDeleteModal(id, name) {
+  document.getElementById('deleteName').textContent = name;
+  document.getElementById('deleteForm').action = '/admin/data-types/' + id + '/delete';
+  openModal('deleteModal');
+}
+</script>
+{% endblock %}

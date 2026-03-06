@@ -85,7 +85,7 @@
       {% for f in files %}
       <tr>
         <td class="col-check"><input type="checkbox" class="file-check" value="{{ f.id }}" onchange="updateDownloadBtn()"/></td>
-        <td>{{ f.station }}</td>
+        <td>{{ f.station_code }}</td>
         <td>{{ f.filename }}</td>
         <td>{{ human_readable_size(f.file_size) }}</td>
         {% if data_type in ['weather', 'deformation'] %}<td>{{ f.total_rows if f.total_rows is not none else '—' }}</td>{% endif %}
