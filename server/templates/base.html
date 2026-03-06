@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Let Me Sync{% endblock %}</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -61,6 +62,17 @@
     {% block content %}{% endblock %}
   </div>
 </main>
+
+<footer>
+  <div class="footer-inner">
+    <span>&copy; {{ now().year }} <a href="https://github.com/martanto" target="_blank" rel="noopener">Martanto</a></span>
+    <span>&middot;</span>
+    <a href="https://github.com/martanto/let-me-sync" target="_blank" rel="noopener">
+      <i data-lucide="github" style="width:14px;height:14px;vertical-align:middle;"></i>
+      martanto/let-me-sync
+    </a>
+  </div>
+</footer>
 
 <script>
   lucide.createIcons();

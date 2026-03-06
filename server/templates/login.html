@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In — Let Me Sync</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -41,6 +42,16 @@
       </button>
     </form>
   </div>
+  <footer style="border-top:none; margin-top:0; text-align:center;">
+    <div class="footer-inner" style="justify-content:center;">
+      <span>&copy; {{ now().year }} <a href="https://github.com/martanto" target="_blank" rel="noopener">Martanto</a></span>
+      <span>&middot;</span>
+      <a href="https://github.com/martanto/let-me-sync" target="_blank" rel="noopener">
+        <i data-lucide="github" style="width:14px;height:14px;vertical-align:middle;"></i>
+        martanto/let-me-sync
+      </a>
+    </div>
+  </footer>
 </div>
 <script>lucide.createIcons();</script>
 </body>

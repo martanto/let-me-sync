@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -9,6 +10,7 @@ from server.utils.helpers import generate_token, sha256_of_token
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="server/templates")
+templates.env.globals["now"] = datetime.now
 
 
 # ── Users ──────────────────────────────────────────────────────────────────────
