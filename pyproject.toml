@@ -39,8 +39,15 @@ package = true
 [tool.hatch.build.targets.wheel]
 packages = ["server"]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.15.5",
+]
+
 [project.scripts]
 let-me-sync = "server.__main__:main"
+server-seed = "server.cli.seed:seed"
+server-refresh = "server.cli.refresh:refresh"
 
 [project.urls]
 Homepage = "https://github.com/martanto/let-me-sync"
