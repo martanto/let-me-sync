@@ -14,6 +14,7 @@ import subprocess
 from server.config import APP_ENV, DATA_ROOT, DEBUG
 from server.database.connection import SessionLocal, check_db_connection
 
+from server.main import _seed_reference_data
 from .seed import seed
 
 
@@ -33,6 +34,7 @@ def refresh() -> None:
     print("\n=== Re-running seed ===")
     db = SessionLocal()
     try:
+        _seed_reference_data(db)
         seed(db)
     finally:
         db.close()

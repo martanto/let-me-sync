@@ -15,7 +15,7 @@ import bcrypt
 
 from server.config import APP_ENV, DATA_ROOT, DEBUG, STATIONS
 from server.database.connection import SessionLocal
-from server.models import ApiKey, DataFile, Role, User
+from server.models import ApiKey, File, Role, User
 from server.utils.helpers import (
     get_sds_path,
     get_upload_path,
@@ -112,19 +112,19 @@ def _seed_api_key(db) -> None:
 
 def _seed_seismic(db) -> None:
     seismic_dummies = [
-        ("VG", "STA1", "", "EHZ", "D", "2024", "001"),
-        ("VG", "STA2", "", "EHZ", "D", "2024", "002"),
+        ("VG", "sta1", "", "EHZ", "D", "2024", "001"),
+        ("VG", "sta2", "", "EHZ", "D", "2024", "002"),
     ]
     for net, sta, loc, chan, sds_type, year, day in seismic_dummies:
-        dest = get_sds_path(DATA_ROOT, net, sta, loc, chan, sds_type, year, day)
+        dest = get_sds_path(DATA_ROOT, net, sta.upper(), loc, chan, sds_type, year, day)
         rel_path = str(dest.relative_to(DATA_ROOT)).replace("\\", "/")
-        if not db.query(DataFile).filter(DataFile.file_path == rel_path).first():
+        if not db.query(File).filter(File.file_path == rel_path).first():
             dest.parent.mkdir(parents=True, exist_ok=True)
             if not dest.exists():
                 dest.write_text("dummy seismic data")
-            db.add(DataFile(
-                data_type="seismic",
-                station=sta,
+            db.add(File(
+                type_code="seismic",
+                station_code=sta,
                 filename=dest.name,
                 file_path=rel_path,
                 file_sha256="0" * 64,
@@ -136,19 +136,19 @@ def _seed_seismic(db) -> None:
 
 def _seed_other(db) -> None:
     other_dummies = [
-        ("visual", "STA1", "2024", "cam01_2024001.jpg"),
-        ("paper", "STA1", "2024", "research_2024.pdf"),
+        ("visual", "sta1", "2024", "cam01_2024001.jpg"),
+        ("paper", "sta1", "2024", "research_2024.pdf"),
     ]
     for data_type, station, year, filename in other_dummies:
         dest = get_upload_path(DATA_ROOT, data_type, station, year, filename)
         rel_path = str(dest.relative_to(DATA_ROOT)).replace("\\", "/")
-        if not db.query(DataFile).filter(DataFile.file_path == rel_path).first():
+        if not db.query(File).filter(File.file_path == rel_path).first():
             dest.parent.mkdir(parents=True, exist_ok=True)
             if not dest.exists():
                 dest.write_text("dummy data")
-            db.add(DataFile(
-                data_type=data_type,
-                station=station,
+            db.add(File(
+                type_code=data_type,
+                station_code=station,
                 filename=filename,
                 file_path=rel_path,
                 file_sha256="0" * 64,
@@ -169,7 +169,7 @@ def _seed_csv_files(db) -> None:
                 filename = f"{target_date}.csv"
                 dest = get_upload_path(DATA_ROOT, data_type, station.upper(), year, filename)
                 rel_path = str(dest.relative_to(DATA_ROOT)).replace("\\", "/")
-                if db.query(DataFile).filter(DataFile.file_path == rel_path).first():
+                if db.query(File).filter(File.file_path == rel_path).first():
                     continue
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 content = _generate_csv_content(data_type, target_date)
@@ -177,14 +177,15 @@ def _seed_csv_files(db) -> None:
                 sha = sha256_of_file(dest)
                 size = dest.stat().st_size
                 row_count = content.count("\n") - 1  # subtract header
-                db.add(DataFile(
-                    data_type=data_type,
-                    station=station.upper(),
+                db.add(File(
+                    type_code=data_type,
+                    station_code=station,
                     filename=filename,
                     file_path=rel_path,
                     file_sha256=sha,
                     file_size=size,
                     total_rows=row_count,
+                    date=target_date,
                     uploaded_at=datetime.now(timezone.utc) - timedelta(days=_NUM_CSV_DAYS - i),
                 ))
                 created += 1
