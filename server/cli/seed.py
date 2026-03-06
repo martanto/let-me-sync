@@ -119,7 +119,7 @@ def _seed_seismic(db) -> None:
                 file_path=rel_path,
                 file_sha256="0" * 64,
                 file_size=18,
-                uploaded_at=datetime.utcnow(),
+                uploaded_at=datetime.now(timezone.utc),
             ))
     db.commit()
 
@@ -143,7 +143,7 @@ def _seed_other(db) -> None:
                 file_path=rel_path,
                 file_sha256="0" * 64,
                 file_size=10,
-                uploaded_at=datetime.utcnow(),
+                uploaded_at=datetime.now(timezone.utc),
             ))
     db.commit()
 
