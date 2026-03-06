@@ -39,14 +39,31 @@ async def index(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/files/{data_type}", response_class=HTMLResponse)
-async def files_page(request: Request, data_type: str, station: str = None, db: Session = Depends(get_db)):
+async def files_page(
+    request: Request,
+    data_type: str,
+    station: str = None,
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+):
     if data_type not in DATA_TYPES:
         raise HTTPException(status_code=404, detail="Unknown data type")
     user = request.session.get("user")
     query = db.query(DataFile).filter(DataFile.data_type == data_type)
     if station:
         query = query.filter(DataFile.station == station)
-    files = query.order_by(DataFile.uploaded_at.desc()).all()
+    query = query.order_by(DataFile.uploaded_at.desc())
+    total = query.count()
+    page = max(1, page)
+    if limit <= 0:
+        files = query.all()
+        total_pages = 1
+        page = 1
+    else:
+        total_pages = max(1, (total + limit - 1) // limit)
+        page = min(page, total_pages)
+        files = query.offset((page - 1) * limit).limit(limit).all()
     stations_in_db = [
         r[0] for r in db.query(DataFile.station).filter(DataFile.data_type == data_type).distinct().all()
     ]
@@ -62,6 +79,10 @@ async def files_page(request: Request, data_type: str, station: str = None, db: 
         "selected_station": station,
         "human_readable_size": human_readable_size,
         "flash": flash,
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": total_pages,
     })
 
 

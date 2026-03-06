@@ -177,6 +177,24 @@ tr:hover td { background: var(--bg); }
 .btn-ghost:hover { color: var(--text); background: var(--bg); }
 .btn-sm { padding: .3rem .65rem; font-size: .8rem; }
 
+/* ── Table filters ───────────────────────────────────────────────────────── */
+.table-filters {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  padding: .625rem 1rem; border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.files-count { margin-left: auto; font-size: .8rem; color: var(--text-muted); }
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.pagination-disabled { opacity: .4; cursor: default; pointer-events: none; }
+nav.pagination {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .5rem 1rem;
+}
+nav.pagination-top { border-bottom: 1px solid var(--border); }
+nav.pagination-bottom { border-top: 1px solid var(--border); }
+.pagination-info { font-size: .85rem; color: var(--text-muted); margin: 0 auto; }
+
 /* ── Forms ───────────────────────────────────────────────────────────────── */
 .form-group { display: flex; flex-direction: column; gap: .375rem; }
 label { font-size: .875rem; font-weight: 500; }
