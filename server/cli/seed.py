@@ -8,7 +8,6 @@ Usage:
     uv run server:seed
 """
 
-import os
 import random
 from datetime import date, datetime, timedelta, timezone
 

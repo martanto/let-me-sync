@@ -1,20 +1,19 @@
 import io
-import os
 import re
 import zipfile
 from datetime import datetime
-from pathlib import Path
 from fastapi import APIRouter, Request, UploadFile, File, Form, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from server.database.connection import get_db
 from server.models import DataFile
-from server.config import DATA_ROOT, DATA_TYPES, DATA_TYPE_ICONS, DATA_TYPE_LABELS, STATIONS
+from server.config import DATA_ROOT, DATA_TYPES, DATA_TYPE_ICONS, DATA_TYPE_LABELS
 from server.utils.helpers import sha256_of_file, get_upload_path, get_sds_path, human_readable_size, validate_and_count_csv, CSV_DATA_TYPES
 
 router = APIRouter()
 templates = Jinja2Templates(directory="server/templates")
+templates.env.globals["now"] = datetime.now
 
 
 @router.get("/", response_class=HTMLResponse)

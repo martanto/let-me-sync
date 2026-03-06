@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from server.cli.seed import seed
 from server.config import SECRET_KEY, DEBUG, APP_ENV, DATA_ROOT
 from server.database.connection import Base, engine, SessionLocal
-from server.models import ApiKey, DataFile, User
+from server.models import User
 from server.middleware import AuthMiddleware
 from server.routes import auth, files, sync, admin
 

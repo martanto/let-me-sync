@@ -27,7 +27,7 @@ def _get_bearer_key(request: Request, db: Session) -> ApiKey | None:
         return None
     token = auth[7:]
     token_hash = sha256_of_token(token)
-    key = db.query(ApiKey).filter(ApiKey.key_hash == token_hash, ApiKey.revoked == False).first()
+    key = db.query(ApiKey).filter(ApiKey.key_hash == token_hash, ApiKey.revoked.is_(False)).first()
     return key
 
 
