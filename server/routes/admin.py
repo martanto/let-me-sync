@@ -54,8 +54,12 @@ async def change_password(
     user_id: int,
     request: Request,
     new_password: str = Form(...),
+    confirm_password: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    if new_password != confirm_password:
+        request.session["flash"] = {"type": "error", "message": "Passwords do not match"}
+        return RedirectResponse(url="/admin/users", status_code=302)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

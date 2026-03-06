@@ -81,10 +81,15 @@
 <div class="modal-backdrop" id="passwordModal">
   <div class="modal">
     <h3>Change password — <span id="pwUsername"></span></h3>
-    <form id="pwForm" method="post" style="display:flex;flex-direction:column;gap:.875rem;">
+    <form id="pwForm" method="post" style="display:flex;flex-direction:column;gap:.875rem;" onsubmit="return validatePasswordForm()">
       <div class="form-group">
         <label>New password</label>
-        <input type="password" name="new_password" required autofocus>
+        <input type="password" id="pwNew" name="new_password" required autofocus>
+      </div>
+      <div class="form-group">
+        <label>Confirm password</label>
+        <input type="password" id="pwConfirm" name="confirm_password" required>
+        <span id="pwMismatch" style="color:var(--red);font-size:.8rem;display:none;">Passwords do not match.</span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal('passwordModal')">Cancel</button>
@@ -119,7 +124,21 @@ document.querySelectorAll('.modal-backdrop').forEach(el => {
 function openPasswordModal(id, username) {
   document.getElementById('pwUsername').textContent = username;
   document.getElementById('pwForm').action = '/admin/users/' + id + '/change-password';
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwConfirm').value = '';
+  document.getElementById('pwMismatch').style.display = 'none';
   openModal('passwordModal');
+}
+function validatePasswordForm() {
+  const pw = document.getElementById('pwNew').value;
+  const confirm = document.getElementById('pwConfirm').value;
+  const msg = document.getElementById('pwMismatch');
+  if (pw !== confirm) {
+    msg.style.display = 'block';
+    return false;
+  }
+  msg.style.display = 'none';
+  return true;
 }
 function openDeleteModal(id, username) {
   document.getElementById('deleteUsername').textContent = username;
