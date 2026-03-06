@@ -72,7 +72,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return RedirectResponse(url="/login", status_code=302)
 
         # Admin-only paths
-        if path.startswith(ADMIN_PREFIX) and user.get("role") != "admin":
+        if path.startswith(ADMIN_PREFIX) and "admin" not in user.get("roles", []):
             return JSONResponse({"detail": "Forbidden"}, status_code=403)
 
         request.state.user = user

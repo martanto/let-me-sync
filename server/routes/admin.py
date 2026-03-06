@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 import bcrypt
 from server.database.connection import get_db
-from server.models import User, ApiKey
+from server.models import User, ApiKey, Role
 from server.utils.helpers import generate_token, sha256_of_token
 
 router = APIRouter(prefix="/admin")
@@ -18,11 +18,13 @@ templates.env.globals["now"] = datetime.now
 @router.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, db: Session = Depends(get_db)):
     users = db.query(User).order_by(User.id).all()
+    roles = db.query(Role).order_by(Role.id).all()
     flash = request.session.pop("flash", None)
     return templates.TemplateResponse("users.html", {
         "request": request,
         "user": request.session.get("user"),
         "users": users,
+        "roles": roles,
         "flash": flash,
     })
 
@@ -35,14 +37,15 @@ async def create_user(
     role: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    if role not in ("admin", "uploader", "downloader"):
+    role_obj = db.query(Role).filter(Role.code == role).first()
+    if not role_obj:
         raise HTTPException(status_code=400, detail="Invalid role")
     existing = db.query(User).filter(User.username == username).first()
     if existing:
         request.session["flash"] = {"type": "error", "message": f"Username '{username}' already exists"}
         return RedirectResponse(url="/admin/users", status_code=302)
     pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    user = User(username=username, password_hash=pw_hash, role=role)
+    user = User(username=username, password_hash=pw_hash, roles=[role_obj])
     db.add(user)
     db.commit()
     request.session["flash"] = {"type": "success", "message": f"User '{username}' created"}

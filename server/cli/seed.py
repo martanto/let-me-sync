@@ -14,8 +14,8 @@ from datetime import date, datetime, timedelta, timezone
 import bcrypt
 
 from server.config import APP_ENV, DATA_ROOT, DEBUG, STATIONS
-from server.database.connection import Base, SessionLocal, engine
-from server.models import ApiKey, DataFile, User
+from server.database.connection import SessionLocal
+from server.models import ApiKey, DataFile, Role, User
 from server.utils.helpers import (
     get_sds_path,
     get_upload_path,
@@ -30,6 +30,8 @@ _CSV_HEADERS = {
 }
 
 _NUM_CSV_DAYS = 30
+
+CANONICAL_ROLES = [("Admin", "admin"), ("Uploader", "uploader"), ("Downloader", "downloader")]
 
 
 def _generate_weather_row(ts: str) -> str:
@@ -78,16 +80,24 @@ def _generate_csv_content(data_type: str, target_date: date) -> str:
     return "".join(lines)
 
 
+def _seed_roles(db) -> None:
+    for name, code in CANONICAL_ROLES:
+        if not db.query(Role).filter(Role.code == code).first():
+            db.add(Role(name=name, code=code))
+    db.commit()
+
+
 def _seed_users(db) -> None:
     users_data = [
         ("admin", "admin123", "admin"),
         ("uploader", "uploader123", "uploader"),
         ("downloader", "downloader123", "downloader"),
     ]
-    for username, password, role in users_data:
+    for username, password, role_code in users_data:
         if not db.query(User).filter(User.username == username).first():
             pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            db.add(User(username=username, password_hash=pw_hash, role=role))
+            role_obj = db.query(Role).filter(Role.code == role_code).first()
+            db.add(User(username=username, password_hash=pw_hash, roles=[role_obj]))
     db.commit()
 
 
@@ -183,13 +193,13 @@ def _seed_csv_files(db) -> None:
 
 
 def seed(db=None) -> None:
-    Base.metadata.create_all(bind=engine)
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
     own_db = db is None
     if own_db:
         db = SessionLocal()
     try:
+        _seed_roles(db)
         _seed_users(db)
         _seed_api_key(db)
         _seed_seismic(db)

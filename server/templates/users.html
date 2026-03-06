@@ -30,7 +30,7 @@
       <tr>
         <td style="color:var(--text-muted);font-size:.8rem;">{{ u.id }}</td>
         <td>{{ u.username }}</td>
-        <td><span class="badge badge-{{ u.role }}">{{ u.role }}</span></td>
+        <td>{% for r in u.roles %}<span class="badge badge-{{ r.code }}">{{ r.code }}</span>{% endfor %}</td>
         <td style="white-space:nowrap;">
           <button class="btn btn-ghost btn-sm" onclick="openPasswordModal({{ u.id }}, '{{ u.username }}')">
             <i data-lucide="key" style="width:14px;height:14px;"></i>
@@ -64,9 +64,7 @@
       <div class="form-group">
         <label>Role</label>
         <select name="role">
-          <option value="downloader">Downloader</option>
-          <option value="uploader">Uploader</option>
-          <option value="admin">Admin</option>
+          {% for r in roles %}<option value="{{ r.code }}">{{ r.name }}</option>{% endfor %}
         </select>
       </div>
       <div class="modal-actions">

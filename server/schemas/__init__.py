@@ -3,10 +3,19 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class RoleOut(BaseModel):
+    id: int
+    name: str
+    code: str
+
+    class Config:
+        from_attributes = True
+
+
 class UserOut(BaseModel):
     id: int
     username: str
-    role: str
+    roles: list[RoleOut]
 
     class Config:
         from_attributes = True
@@ -49,4 +58,3 @@ class SyncCheckItem(BaseModel):
     chan: Optional[str] = None
     sds_type: Optional[str] = None
     day: Optional[str] = None   # zero-padded day-of-year, e.g. "001"
-

@@ -147,7 +147,7 @@ async def download_zip(ids: list[int] = Query(...), db: Session = Depends(get_db
 @router.post("/files/{file_id}/delete")
 async def delete_file(file_id: int, request: Request, db: Session = Depends(get_db)):
     user = request.session.get("user")
-    if not user or user["role"] != "admin":
+    if not user or "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin only")
     record = db.query(DataFile).filter(DataFile.id == file_id).first()
     if not record:

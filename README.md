@@ -15,6 +15,7 @@ A FastAPI server for syncing and managing volcano monitoring files. Field client
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
+- SQLite (default, zero-config) **or** PostgreSQL
 
 ## Installation
 
@@ -30,11 +31,34 @@ Copy the environment file and set your values:
 cp .env.example .env
 ```
 
-| Variable     | Default                          | Description                        |
-|--------------|----------------------------------|------------------------------------|
-| `SECRET_KEY` | `change-me-in-production-please` | Session signing key                |
-| `DEBUG`      | `false`                          | Seed test data on startup          |
-| `APP_ENV`    | `development`                    | Set to `production` to disable seed|
+| Variable       | Default                                            | Description                         |
+|----------------|----------------------------------------------------|-------------------------------------|
+| `SECRET_KEY`   | `change-me-in-production-please`                   | Session signing key                 |
+| `DEBUG`        | `false`                                            | Seed test data on startup           |
+| `APP_ENV`      | `development`                                      | Set to `production` to disable seed |
+| `DATABASE_URL` | `sqlite:///./server/database/data.db` (auto)       | SQLAlchemy database URL             |
+
+## Database
+
+The server defaults to **SQLite** — no setup needed, the file is created automatically on first run.
+
+Schema migrations are managed by **Alembic** and run automatically on startup. To run them manually:
+
+```bash
+uv run alembic upgrade head
+```
+
+### Using PostgreSQL instead
+
+Create the database, then set `DATABASE_URL` in your `.env`:
+
+```bash
+psql -U postgres -c "CREATE DATABASE let_me_sync;"
+```
+
+```env
+DATABASE_URL=postgresql://postgres@localhost:5432/let_me_sync
+```
 
 ## Running
 
@@ -57,16 +81,21 @@ The dev API key token is printed to the console on startup.
 ## Project Structure
 
 ```
+alembic/                      # Alembic migration environment
+  versions/                   # Auto-generated migration scripts
+  env.py                      # Connects Alembic to the app's models and DATABASE_URL
+alembic.ini                   # Alembic configuration (URL set dynamically in env.py)
+
 server/
 ├── main.py                  # App entry point, lifespan, middleware wiring
 ├── middleware.py             # Session + Bearer auth, role checks
-├── config/__init__.py        # DATA_ROOT, DATA_TYPES, environment settings
-├── database/connection.py    # SQLAlchemy engine, SessionLocal
-├── models/__init__.py        # User, ApiKey, DataFile
+├── config/__init__.py        # DATA_ROOT, DATA_TYPES, DATABASE_URL, environment settings
+├── database/connection.py    # SQLAlchemy engine, SessionLocal, check_db_connection()
+├── models/__init__.py        # Role, User (many-to-many via user_roles), ApiKey, DataFile
 ├── schemas/__init__.py       # Pydantic request/response models
 ├── cli/
-│   ├── seed.py               # Dev seed: users, API key, dummy files
-│   └── refresh.py            # Drop + recreate DB and re-seed (dev only)
+│   ├── seed.py               # Dev seed: roles, users, API key, dummy files
+│   └── refresh.py            # Alembic downgrade+upgrade + re-seed (dev only)
 ├── routes/
 │   ├── auth.py               # /login, /logout
 │   ├── files.py              # Dashboard, file listing, download, delete, upload
