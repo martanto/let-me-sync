@@ -1,16 +1,17 @@
 import io
 import os
+import re
 import zipfile
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Request, UploadFile, File, Form, Depends, HTTPException, Query
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from server.database.connection import get_db
 from server.models import DataFile
 from server.config import DATA_ROOT, DATA_TYPES, DATA_TYPE_ICONS, DATA_TYPE_LABELS, STATIONS
-from server.utils.helpers import sha256_of_file, get_upload_path, get_sds_path, human_readable_size
+from server.utils.helpers import sha256_of_file, get_upload_path, get_sds_path, human_readable_size, validate_and_count_csv, CSV_DATA_TYPES
 
 router = APIRouter()
 templates = Jinja2Templates(directory="server/templates")
@@ -138,7 +139,6 @@ async def delete_file(file_id: int, request: Request, db: Session = Depends(get_
     db.delete(record)
     db.commit()
     request.session["flash"] = {"type": "success", "message": "File deleted successfully"}
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url=f"/files/{data_type}", status_code=302)
 
 
@@ -158,6 +158,10 @@ async def upload_file(
 ):
     if data_type not in DATA_TYPES:
         raise HTTPException(status_code=400, detail="Invalid data_type")
+
+    if data_type in CSV_DATA_TYPES:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}\.csv", file.filename):
+            raise HTTPException(status_code=400, detail="Filename must match YYYY-MM-DD.csv")
 
     if data_type == "seismic":
         if not all(x is not None for x in [net, chan, sds_type, day]):
@@ -179,10 +183,19 @@ async def upload_file(
     file_size = dest.stat().st_size
     rel_path = str(dest.relative_to(DATA_ROOT))
 
+    total_rows = None
+    if data_type in CSV_DATA_TYPES:
+        try:
+            total_rows = validate_and_count_csv(str(dest))
+        except Exception as e:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail=f"Invalid CSV: {e}")
+
     existing = db.query(DataFile).filter(DataFile.file_path == rel_path).first()
     if existing:
         existing.file_sha256 = file_hash
         existing.file_size = file_size
+        existing.total_rows = total_rows
         existing.uploaded_at = datetime.utcnow()
         db.commit()
         return {"status": "updated", "id": existing.id}
@@ -194,6 +207,7 @@ async def upload_file(
             file_path=rel_path,
             file_sha256=file_hash,
             file_size=file_size,
+            total_rows=total_rows,
         )
         db.add(record)
         db.commit()

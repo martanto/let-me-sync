@@ -31,6 +31,7 @@ class DataFileOut(BaseModel):
     file_path: str
     file_sha256: str
     file_size: int
+    total_rows: int | None = None
     uploaded_at: datetime
 
     class Config:
