@@ -62,6 +62,7 @@ def seed_dev_data(db):
         ("multigas", "STA3", "2024", "so2_flux.csv"),
         ("visual", "STA1", "2024", "cam01_2024001.jpg"),
         ("weather", "STA2", "2024", "met_2024001.csv"),
+        ("paper", "STA1", "2024", "research_2024.pdf"),
     ]
     for data_type, station, year, filename in other_dummies:
         dest = get_upload_path(DATA_ROOT, data_type, station, year, filename)

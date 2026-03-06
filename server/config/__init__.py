@@ -18,7 +18,7 @@ _server_url = urlparse(os.getenv("SERVER_URL", "http://localhost:8000"))
 SERVER_HOST = _server_url.hostname or "localhost"
 SERVER_PORT = _server_url.port or 8000
 
-DATA_TYPES = ["seismic", "deformation", "multigas", "visual", "weather"]
+DATA_TYPES = ["seismic", "deformation", "multigas", "visual", "weather", "paper"]
 
 DATA_TYPE_ICONS = {
     "seismic": "activity",
@@ -26,6 +26,7 @@ DATA_TYPE_ICONS = {
     "multigas": "wind",
     "visual": "camera",
     "weather": "cloud",
+    "paper": "file-text",
 }
 
 DATA_TYPE_LABELS = {
@@ -34,6 +35,7 @@ DATA_TYPE_LABELS = {
     "multigas": "Multigas",
     "visual": "Visual",
     "weather": "Weather",
+    "paper": "Paper",
 }
 
 STATIONS = ["sta1", "sta2", "sta3", "sta4", "sta5"]
