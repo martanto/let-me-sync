@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BigInteger, ForeignKey, Table, Date
 from sqlalchemy.orm import relationship
 from server.database.connection import Base
 
@@ -15,8 +15,8 @@ class Role(Base):
     __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, nullable=False)  # "Admin"
-    code = Column(String, unique=True, nullable=False)  # "admin"
+    name = Column(String, unique=True, nullable=False)
+    code = Column(String, unique=True, nullable=False)
     users = relationship("User", secondary=user_roles, back_populates="roles")
 
 
@@ -40,15 +40,37 @@ class ApiKey(Base):
     created_by = Column(String, nullable=False)
 
 
-class DataFile(Base):
-    __tablename__ = "data_files"
+class DataType(Base):
+    __tablename__ = "data_types"
 
     id = Column(Integer, primary_key=True, index=True)
-    data_type = Column(String, nullable=False, index=True)  # seismic | deformation | multigas | visual | weather
-    station = Column(String, nullable=False, index=True)
+    name = Column(String, unique=True, nullable=False)
+    code = Column(String, unique=True, nullable=False)
+    files = relationship("File", back_populates="data_type_rel", passive_deletes=True)
+
+
+class Station(Base):
+    __tablename__ = "stations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    code = Column(String, unique=True, nullable=False)
+    files = relationship("File", back_populates="station_rel", passive_deletes=True)
+
+
+class File(Base):
+    __tablename__ = "files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    type_code = Column(String, ForeignKey("data_types.code", ondelete="RESTRICT"), nullable=False, index=True)
+    station_code = Column(String, ForeignKey("stations.code", ondelete="RESTRICT"), nullable=False, index=True)
     filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False, unique=True)
     file_sha256 = Column(String, nullable=False)
     file_size = Column(BigInteger, default=0)
     total_rows = Column(Integer, nullable=True)
+    date = Column(Date, nullable=True)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    data_type_rel = relationship("DataType", back_populates="files")
+    station_rel = relationship("Station", back_populates="files")
