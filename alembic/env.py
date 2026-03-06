@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from server.config import DATABASE_URL
 from server.database.connection import Base
-from server.models import User, ApiKey, DataFile, Role  # noqa: F401
+from server.models import User, ApiKey, File, Role, DataType, Station  # noqa: F401
 
 # this is the Alembic Config object
 config = context.config
