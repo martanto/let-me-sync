@@ -1,11 +1,14 @@
 from datetime import datetime
-from fastapi import APIRouter, Request, Form, Depends
+
+import bcrypt
+from fastapi import Form, Depends, Request, APIRouter
+from sqlalchemy.orm import Session
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
-import bcrypt
-from server.database.connection import get_db
+
 from server.models import User
+from server.database.connection import get_db
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="server/templates")
@@ -17,7 +20,9 @@ async def login_page(request: Request):
     if request.session.get("user"):
         return RedirectResponse(url="/", status_code=302)
     error = request.session.pop("flash_error", None)
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+    return templates.TemplateResponse(
+        "login.html", {"request": request, "error": error}
+    )
 
 
 @router.post("/login")

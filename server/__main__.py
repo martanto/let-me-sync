@@ -1,5 +1,6 @@
 import uvicorn
-from server.config import SERVER_HOST, SERVER_PORT, DEBUG
+
+from server.config import DEBUG, SERVER_HOST, SERVER_PORT
 
 
 def main():

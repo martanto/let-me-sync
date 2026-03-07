@@ -22,6 +22,9 @@ dependencies = [
     "python-dotenv",
     "itsdangerous>=2.2.0",
     "pandas>=3.0.1",
+    "alembic>=1.13",
+    "psycopg2-binary>=2.9",
+    "zipstream-ng>=1.7.1",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

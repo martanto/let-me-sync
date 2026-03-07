@@ -1,3 +1,4 @@
+import re
 import csv
 import hashlib
 import secrets
@@ -20,7 +21,9 @@ def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def get_upload_path(data_root: Path, data_type: str, station: str, year: str, filename: str) -> Path:
+def get_upload_path(
+    data_root: Path, data_type: str, station: str, year: str, filename: str
+) -> Path:
     return data_root / data_type / station / year / filename
 
 
