@@ -57,6 +57,13 @@ def validate_and_count_csv(file_path: str) -> int:
     return count
 
 
+def slugify(value: str) -> str:
+    value = value.lower().strip()
+    value = re.sub(r"[^\w\s-]", "", value)
+    value = re.sub(r"[\s_-]+", "-", value)
+    return re.sub(r"^-+|-+$", "", value)
+
+
 def human_readable_size(size_bytes: int) -> str:
     for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024:

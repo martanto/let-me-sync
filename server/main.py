@@ -4,7 +4,10 @@ from contextlib import asynccontextmanager
 
 import bcrypt
 from fastapi import FastAPI
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from fastapi.staticfiles import StaticFiles
+from alembic.runtime.migration import MigrationContext
 from starlette.middleware.sessions import SessionMiddleware
 
 from server.config import DEBUG, APP_ENV, DATA_ROOT, SECRET_KEY
@@ -12,7 +15,7 @@ from server.models import Role, User, Station, DataType
 from server.routes import auth, sync, admin, files
 from server.cli.seed import seed, _seed_roles
 from server.middleware import AuthMiddleware
-from server.database.connection import SessionLocal, check_db_connection
+from server.database.connection import SessionLocal, engine, check_db_connection
 
 
 CANONICAL_DATA_TYPES = [
@@ -66,7 +69,16 @@ async def lifespan(app: FastAPI):
         print(f"\n[ERROR] {exc}")
         sys.exit(1)
 
-    subprocess.run(["uv", "run", "alembic", "upgrade", "head"], check=True)
+    alembic_cfg = Config("alembic.ini")
+    script = ScriptDirectory.from_config(alembic_cfg)
+    with engine.connect() as conn:
+        migration_ctx = MigrationContext.configure(conn)
+        current_revs = migration_ctx.get_current_heads()
+        head_revs = set(script.get_heads())
+    if current_revs == head_revs:
+        print("[DB] Migrations already up to date.")
+    else:
+        subprocess.run(["uv", "run", "alembic", "upgrade", "head"], check=True)
 
     # Ensure uploads directory exists
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
@@ -75,7 +87,10 @@ async def lifespan(app: FastAPI):
     try:
         _seed_reference_data(db)
         if DEBUG and APP_ENV != "production":
-            seed(db)
+            if db.query(User).count() > 0:
+                print("[DEV] Seed data already present, skipping.")
+            else:
+                seed(db)
         else:
             if db.query(User).count() == 0:
                 prompt_create_admin(db)
