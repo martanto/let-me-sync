@@ -1,6 +1,6 @@
 # Let Me Sync
 
-A FastAPI server for syncing and managing volcano monitoring files. Field clients push data via a bearer-token API; scientists browse and download files through a web dashboard.
+A FastAPI server for syncing and managing files across data types and stations. Clients push data via a bearer-token API; users browse and download files through a web dashboard.
 
 ## Features
 

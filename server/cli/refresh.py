@@ -10,7 +10,7 @@ Usage:
 
 import shutil
 
-from server.config import APP_ENV, DATA_ROOT, DEBUG
+from server.config import DEBUG, APP_ENV, DATA_ROOT
 from server.database.connection import Base, SessionLocal, engine
 
 from .seed import seed
