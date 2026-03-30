@@ -1,10 +1,12 @@
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
-from server.database.connection import SessionLocal
+from starlette.requests import Request
+from starlette.responses import JSONResponse, RedirectResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from server.models import ApiKey
 from server.utils.helpers import sha256_of_token
+from server.database.connection import SessionLocal
+
 
 # Routes that don't require any auth
 PUBLIC_PATHS = {"/login", "/health"}
@@ -27,7 +29,11 @@ def _get_bearer_key(request: Request, db: Session) -> ApiKey | None:
         return None
     token = auth[7:]
     token_hash = sha256_of_token(token)
-    key = db.query(ApiKey).filter(ApiKey.key_hash == token_hash, ApiKey.revoked.is_(False)).first()
+    key = (
+        db.query(ApiKey)
+        .filter(ApiKey.key_hash == token_hash, ApiKey.revoked.is_(False))
+        .first()
+    )
     return key
 
 
@@ -41,11 +47,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Bearer-only API paths
         if path in BEARER_PATHS or (request.method == "POST" and path == "/upload"):
+            accepts_json = "application/json" in request.headers.get("accept", "")
             db = SessionLocal()
             try:
                 key = _get_bearer_key(request, db)
                 if key is None:
-                    return JSONResponse({"detail": "Invalid or missing API key"}, status_code=401)
+                    if accepts_json:
+                        return JSONResponse(
+                            {"detail": "Invalid or missing API key"}, status_code=401
+                        )
+                    return RedirectResponse(url="/login", status_code=302)
                 request.state.api_key = key
             finally:
                 db.close()
@@ -67,13 +78,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         user = _get_session_user(request)
 
         if user is None:
-            if path.startswith("/api") or request.headers.get("accept", "").startswith("application/json"):
-                return JSONResponse({"detail": "Not authenticated"}, status_code=401)
             return RedirectResponse(url="/login", status_code=302)
 
         # Admin-only paths
-        if path.startswith(ADMIN_PREFIX) and user.get("role") != "admin":
-            return JSONResponse({"detail": "Forbidden"}, status_code=403)
+        if path.startswith(ADMIN_PREFIX) and "admin" not in user.get("roles", []):
+            return RedirectResponse(url="/login", status_code=302)
 
         request.state.user = user
         return await call_next(request)

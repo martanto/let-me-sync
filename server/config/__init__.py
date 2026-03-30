@@ -1,14 +1,18 @@
 import os
 from pathlib import Path
 from urllib.parse import urlparse
+
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SERVER_DIR = BASE_DIR / "server"
 DATA_ROOT = SERVER_DIR / "uploads"
-DATABASE_URL = f"sqlite:///{SERVER_DIR / 'database' / 'data.db'}"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", f"sqlite:///{SERVER_DIR / 'database' / 'data.db'}"
+)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-please")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"

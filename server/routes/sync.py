@@ -1,36 +1,51 @@
 import re
-from datetime import datetime
-from fastapi import APIRouter, Request, UploadFile, File, Form, Depends, HTTPException
+from datetime import date as date_type, datetime, timedelta
+
+from fastapi import (
+    File as FastAPIFile,
+    Form,
+    Depends,
+    Request,
+    APIRouter,
+    UploadFile,
+    HTTPException,
+)
 from sqlalchemy.orm import Session
-from server.database.connection import get_db
-from server.models import DataFile
+
 from server.config import DATA_ROOT, DATA_TYPES
-from server.schemas import SyncCheckItem
-from server.utils.helpers import sha256_of_file, get_upload_path, get_sds_path, validate_and_count_csv, CSV_DATA_TYPES
+from server.models import File
+from server.schemas import SyncCheckItem, SyncCheckResponse
+from server.utils.helpers import (
+    CSV_DATA_TYPES,
+    get_sds_path,
+    sha256_of_file,
+    get_upload_path,
+    validate_and_count_csv,
+)
+from server.database.connection import get_db
+
 
 router = APIRouter(prefix="/sync")
 
 
-@router.post("/check")
+@router.post("/check", response_model=SyncCheckResponse)
 async def sync_check(items: list[SyncCheckItem], db: Session = Depends(get_db)):
     to_upload = []
     for item in items:
         if item.data_type not in DATA_TYPES:
             continue
-        # Find by data_type + station + filename
         records = (
-            db.query(DataFile)
+            db.query(File)
             .filter(
-                DataFile.data_type == item.data_type,
-                DataFile.station == item.station,
-                DataFile.filename == item.filename,
+                File.type_code == item.data_type,
+                File.station_code == item.station,
+                File.filename == item.filename,
             )
             .all()
         )
         if not records:
             to_upload.append(item)
         else:
-            # Check if any record has matching hash
             if not any(r.file_sha256 == item.sha256 for r in records):
                 to_upload.append(item)
 
@@ -40,12 +55,13 @@ async def sync_check(items: list[SyncCheckItem], db: Session = Depends(get_db)):
 @router.post("/upload")
 async def sync_upload(
     request: Request,
-    file: UploadFile = File(...),
+    file: UploadFile = FastAPIFile(...),
     data_type: str = Form(...),
     station: str = Form(...),
+    date: str = Form(None),
     # SDS fields (required when data_type == "seismic")
     net: str = Form(None),
-    loc: str = Form(""),   # location code is optional in SDS (can be empty)
+    loc: str = Form(""),  # location code is optional in SDS (can be empty)
     chan: str = Form(None),
     sds_type: str = Form(None),
     day: str = Form(None),
@@ -56,7 +72,9 @@ async def sync_upload(
 
     if data_type in CSV_DATA_TYPES:
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}\.csv", file.filename):
-            raise HTTPException(status_code=400, detail="Filename must match YYYY-MM-DD.csv")
+            raise HTTPException(
+                status_code=400, detail="Filename must match YYYY-MM-DD.csv"
+            )
 
     if data_type == "seismic":
         if not all(x is not None for x in [net, chan, sds_type, day]):
@@ -64,11 +82,20 @@ async def sync_upload(
                 status_code=400,
                 detail="Seismic uploads require: net, loc, chan, sds_type, day",
             )
-        year = file.filename.split(".")[-2] if len(file.filename.split(".")) >= 7 else str(datetime.utcnow().year)
+        year = (
+            file.filename.split(".")[-2]
+            if len(file.filename.split(".")) >= 7
+            else str(datetime.utcnow().year)
+        )
         dest = get_sds_path(DATA_ROOT, net, station, loc, chan, sds_type, year, day)
+        file_date = date_type(int(year), 1, 1) + timedelta(days=int(day) - 1)
     else:
         year = str(datetime.utcnow().year)
         dest = get_upload_path(DATA_ROOT, data_type, station, year, file.filename)
+        if data_type in CSV_DATA_TYPES:
+            file_date = date_type.fromisoformat(file.filename[:-4])
+        else:
+            file_date = date_type.fromisoformat(date) if date else None
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     contents = await file.read()
@@ -87,11 +114,11 @@ async def sync_upload(
             raise HTTPException(status_code=400, detail=f"Invalid CSV: {e}")
 
     existing = (
-        db.query(DataFile)
+        db.query(File)
         .filter(
-            DataFile.data_type == data_type,
-            DataFile.station == station,
-            DataFile.filename == file.filename,
+            File.type_code == data_type,
+            File.station_code == station,
+            File.filename == file.filename,
         )
         .first()
     )
@@ -101,18 +128,20 @@ async def sync_upload(
         existing.file_size = file_size
         existing.file_path = rel_path
         existing.total_rows = total_rows
+        existing.date = file_date
         existing.uploaded_at = datetime.utcnow()
         db.commit()
         return {"status": "updated", "id": existing.id, "sha256": file_hash}
     else:
-        record = DataFile(
-            data_type=data_type,
-            station=station,
+        record = File(
+            type_code=data_type,
+            station_code=station,
             filename=file.filename,
             file_path=rel_path,
             file_sha256=file_hash,
             file_size=file_size,
             total_rows=total_rows,
+            date=file_date,
         )
         db.add(record)
         db.commit()

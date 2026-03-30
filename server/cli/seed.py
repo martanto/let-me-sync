@@ -1,6 +1,7 @@
 """
 Seed script for development/demo purposes.
-Creates dummy files for all data types and stations, and seeds default users and API key.
+Creates dummy files for all data types and stations,
+and seeds default users and API key.
 
 Only runs when DEBUG=true and APP_ENV != production in .env.
 
@@ -9,19 +10,20 @@ Usage:
 """
 
 import random
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import bcrypt
 
-from server.config import APP_ENV, DATA_ROOT, DEBUG, STATIONS
-from server.database.connection import Base, SessionLocal, engine
-from server.models import ApiKey, DataFile, User
+from server.config import DEBUG, APP_ENV, STATIONS, DATA_ROOT
+from server.models import File, Role, User, ApiKey
 from server.utils.helpers import (
     get_sds_path,
-    get_upload_path,
     sha256_of_file,
+    get_upload_path,
     sha256_of_token,
 )
+from server.database.connection import SessionLocal
+
 
 _CSV_HEADERS = {
     "weather": "timestamp,temperature,humidity,wind_speed,wind_direction,rainfall,pressure\n",
@@ -30,6 +32,12 @@ _CSV_HEADERS = {
 }
 
 _NUM_CSV_DAYS = 30
+
+CANONICAL_ROLES = [
+    ("Admin", "admin"),
+    ("Uploader", "uploader"),
+    ("Downloader", "downloader"),
+]
 
 
 def _generate_weather_row(ts: str) -> str:
@@ -78,16 +86,24 @@ def _generate_csv_content(data_type: str, target_date: date) -> str:
     return "".join(lines)
 
 
+def _seed_roles(db) -> None:
+    for name, code in CANONICAL_ROLES:
+        if not db.query(Role).filter(Role.code == code).first():
+            db.add(Role(name=name, code=code))
+    db.commit()
+
+
 def _seed_users(db) -> None:
     users_data = [
         ("admin", "admin123", "admin"),
         ("uploader", "uploader123", "uploader"),
         ("downloader", "downloader123", "downloader"),
     ]
-    for username, password, role in users_data:
+    for username, password, role_code in users_data:
         if not db.query(User).filter(User.username == username).first():
             pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            db.add(User(username=username, password_hash=pw_hash, role=role))
+            role_obj = db.query(Role).filter(Role.code == role_code).first()
+            db.add(User(username=username, password_hash=pw_hash, roles=[role_obj]))
     db.commit()
 
 
@@ -102,49 +118,53 @@ def _seed_api_key(db) -> None:
 
 def _seed_seismic(db) -> None:
     seismic_dummies = [
-        ("VG", "STA1", "", "EHZ", "D", "2024", "001"),
-        ("VG", "STA2", "", "EHZ", "D", "2024", "002"),
+        ("VG", "sta1", "", "EHZ", "D", "2024", "001"),
+        ("VG", "sta2", "", "EHZ", "D", "2024", "002"),
     ]
     for net, sta, loc, chan, sds_type, year, day in seismic_dummies:
-        dest = get_sds_path(DATA_ROOT, net, sta, loc, chan, sds_type, year, day)
+        dest = get_sds_path(DATA_ROOT, net, sta.upper(), loc, chan, sds_type, year, day)
         rel_path = str(dest.relative_to(DATA_ROOT)).replace("\\", "/")
-        if not db.query(DataFile).filter(DataFile.file_path == rel_path).first():
+        if not db.query(File).filter(File.file_path == rel_path).first():
             dest.parent.mkdir(parents=True, exist_ok=True)
             if not dest.exists():
                 dest.write_text("dummy seismic data")
-            db.add(DataFile(
-                data_type="seismic",
-                station=sta,
-                filename=dest.name,
-                file_path=rel_path,
-                file_sha256="0" * 64,
-                file_size=18,
-                uploaded_at=datetime.now(timezone.utc),
-            ))
+            db.add(
+                File(
+                    type_code="seismic",
+                    station_code=sta,
+                    filename=dest.name,
+                    file_path=rel_path,
+                    file_sha256="0" * 64,
+                    file_size=18,
+                    uploaded_at=datetime.now(UTC),
+                )
+            )
     db.commit()
 
 
 def _seed_other(db) -> None:
     other_dummies = [
-        ("visual", "STA1", "2024", "cam01_2024001.jpg"),
-        ("paper", "STA1", "2024", "research_2024.pdf"),
+        ("visual", "sta1", "2024", "cam01_2024001.jpg"),
+        ("paper", "sta1", "2024", "research_2024.pdf"),
     ]
     for data_type, station, year, filename in other_dummies:
         dest = get_upload_path(DATA_ROOT, data_type, station, year, filename)
         rel_path = str(dest.relative_to(DATA_ROOT)).replace("\\", "/")
-        if not db.query(DataFile).filter(DataFile.file_path == rel_path).first():
+        if not db.query(File).filter(File.file_path == rel_path).first():
             dest.parent.mkdir(parents=True, exist_ok=True)
             if not dest.exists():
                 dest.write_text("dummy data")
-            db.add(DataFile(
-                data_type=data_type,
-                station=station,
-                filename=filename,
-                file_path=rel_path,
-                file_sha256="0" * 64,
-                file_size=10,
-                uploaded_at=datetime.now(timezone.utc),
-            ))
+            db.add(
+                File(
+                    type_code=data_type,
+                    station_code=station,
+                    filename=filename,
+                    file_path=rel_path,
+                    file_sha256="0" * 64,
+                    file_size=10,
+                    uploaded_at=datetime.now(UTC),
+                )
+            )
     db.commit()
 
 
@@ -157,9 +177,11 @@ def _seed_csv_files(db) -> None:
                 target_date = today - timedelta(days=_NUM_CSV_DAYS - i)
                 year = str(target_date.year)
                 filename = f"{target_date}.csv"
-                dest = get_upload_path(DATA_ROOT, data_type, station.upper(), year, filename)
+                dest = get_upload_path(
+                    DATA_ROOT, data_type, station.upper(), year, filename
+                )
                 rel_path = str(dest.relative_to(DATA_ROOT)).replace("\\", "/")
-                if db.query(DataFile).filter(DataFile.file_path == rel_path).first():
+                if db.query(File).filter(File.file_path == rel_path).first():
                     continue
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 content = _generate_csv_content(data_type, target_date)
@@ -167,29 +189,35 @@ def _seed_csv_files(db) -> None:
                 sha = sha256_of_file(dest)
                 size = dest.stat().st_size
                 row_count = content.count("\n") - 1  # subtract header
-                db.add(DataFile(
-                    data_type=data_type,
-                    station=station.upper(),
-                    filename=filename,
-                    file_path=rel_path,
-                    file_sha256=sha,
-                    file_size=size,
-                    total_rows=row_count,
-                    uploaded_at=datetime.now(timezone.utc) - timedelta(days=_NUM_CSV_DAYS - i),
-                ))
+                db.add(
+                    File(
+                        type_code=data_type,
+                        station_code=station,
+                        filename=filename,
+                        file_path=rel_path,
+                        file_sha256=sha,
+                        file_size=size,
+                        total_rows=row_count,
+                        date=target_date,
+                        uploaded_at=datetime.now(UTC)
+                        - timedelta(days=_NUM_CSV_DAYS - i),
+                    )
+                )
                 created += 1
     db.commit()
-    print(f"[DEV] CSV seed: {created} files created for weather, deformation, multigas.")
+    print(
+        f"[DEV] CSV seed: {created} files created for weather, deformation, multigas."
+    )
 
 
 def seed(db=None) -> None:
-    Base.metadata.create_all(bind=engine)
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
     own_db = db is None
     if own_db:
         db = SessionLocal()
     try:
+        _seed_roles(db)
         _seed_users(db)
         _seed_api_key(db)
         _seed_seismic(db)

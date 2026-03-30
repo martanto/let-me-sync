@@ -21,7 +21,7 @@
     <h2>Files</h2>
     <div style="margin-left:auto;">
       <button id="download-zip-btn" class="btn btn-primary btn-sm" disabled onclick="downloadSelected()">
-        <i data-lucide="archive" style="width:14px;height:14px;"></i> Download Selected
+        <i data-lucide="{% if data_type == 'seismic' %}download{% else %}archive{% endif %}" style="width:14px;height:14px;"></i> Download Selected
       </button>
     </div>
   </div>
@@ -158,8 +158,21 @@ function toggleAll(cb) {
 function downloadSelected() {
   const ids = [...document.querySelectorAll('.file-check:checked')].map(c => c.value);
   if (ids.length === 0) return;
+  {% if data_type == 'seismic' %}
+  ids.forEach((id, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = `/download/${id}`;
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, i * 300);
+  });
+  {% else %}
   const params = ids.map(id => `ids=${encodeURIComponent(id)}`).join('&');
   window.location.href = `/download-zip?${params}`;
+  {% endif %}
 }
 </script>
 {% endblock %}
